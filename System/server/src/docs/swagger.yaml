@@ -1,0 +1,1062 @@
+openapi: 3.0.0
+
+info:
+  title: Civic Issue Reporting API
+  version: 1.0.0
+  description: |
+    AI Powered Civic Issue Reporting and Resolution System.
+    
+    Development authentication is currently available through
+    the X-Dev-Clerk-Id header so the backend can be tested
+    before the frontend Clerk integration is completed.
+
+servers:
+  - url: http://localhost:5000/api
+    description: Local Development Server
+
+
+# ============================================================
+# TAGS
+# ============================================================
+
+tags:
+
+  - name: Complaints
+    description: Civic complaint management
+
+  - name: Dashboard
+    description: Dashboard APIs
+
+  - name: Reports
+    description: Report generation
+
+  - name: Notifications
+    description: User notification management
+
+
+# ============================================================
+# COMPONENTS
+# ============================================================
+
+components:
+
+  # ----------------------------------------------------------
+  # SECURITY
+  # ----------------------------------------------------------
+
+  securitySchemes:
+
+    ClerkAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Clerk session JWT.
+        Use this authentication when the frontend Clerk
+        integration is active.
+
+    DevAuth:
+      type: apiKey
+      in: header
+      name: X-Dev-Clerk-Id
+      description: |
+        DEVELOPMENT ONLY.
+
+        Enter the Clerk user ID of a user that already exists
+        in MongoDB.
+
+        Example:
+        user_3EfvDPz4846hArmgRIH80D3AJE
+
+
+  # ----------------------------------------------------------
+  # SCHEMAS
+  # ----------------------------------------------------------
+
+  schemas:
+
+    Complaint:
+
+      type: object
+
+      properties:
+
+        _id:
+          type: string
+          example: 66b123456789abcdef123456
+
+        complaintNumber:
+          type: string
+          example: CMP-2026-000001
+
+        title:
+          type: string
+          example: Large pothole on main road
+
+        description:
+          type: string
+          example: Large pothole causing difficulty for vehicles and creating a safety hazard
+
+        category:
+          type: string
+          enum:
+            - Pothole
+            - Garbage
+            - WaterLeak
+            - Streetlight
+            - RoadDamage
+            - OpenManhole
+            - FallenTree
+          example: Pothole
+
+        priority:
+          type: string
+          enum:
+            - Low
+            - Medium
+            - High
+          example: Medium
+
+        status:
+          type: string
+          example: Pending
+
+        latitude:
+          type: number
+          format: double
+          example: 16.705
+
+        longitude:
+          type: number
+          format: double
+          example: 74.2433
+
+        imageUrl:
+          type: string
+          format: uri
+          example: https://res.cloudinary.com/example/image/upload/complaint.jpg
+
+        citizen:
+          type: string
+          example: 66b123456789abcdef123456
+
+        clerkUserId:
+          type: string
+          example: user_3EfvDPz4846hArmgRIH80D3AJE
+
+        createdAt:
+          type: string
+          format: date-time
+
+
+    Notification:
+
+      type: object
+
+      properties:
+
+        _id:
+          type: string
+
+        title:
+          type: string
+          example: Complaint Created
+
+        message:
+          type: string
+          example: Your complaint has been successfully created.
+
+        type:
+          type: string
+          example: Complaint Created
+
+        priority:
+          type: string
+          enum:
+            - Low
+            - Medium
+            - High
+
+        isRead:
+          type: boolean
+          example: false
+
+        createdAt:
+          type: string
+          format: date-time
+
+
+# ============================================================
+# PATHS
+# ============================================================
+
+paths:
+
+
+  # ==========================================================
+  # COMPLAINTS
+  # ==========================================================
+
+  /complaints:
+
+    # --------------------------------------------------------
+    # GET ALL COMPLAINTS
+    # --------------------------------------------------------
+
+    get:
+
+      tags:
+        - Complaints
+
+      summary: Get all complaints
+
+      description: Retrieve all civic complaints.
+
+      security:
+        - DevAuth: []
+
+      responses:
+
+        '200':
+          description: Complaints retrieved successfully
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: object
+
+                properties:
+
+                  success:
+                    type: boolean
+                    example: true
+
+                  data:
+                    type: array
+
+                    items:
+                      $ref: '#/components/schemas/Complaint'
+
+
+        '401':
+          description: Authentication required
+
+
+        '500':
+          description: Internal Server Error
+
+
+    # --------------------------------------------------------
+    # CREATE COMPLAINT
+    # --------------------------------------------------------
+
+    post:
+
+      tags:
+        - Complaints
+
+      summary: Create Complaint
+
+      description: |
+        Create a civic complaint with an image.
+
+        The uploaded image will be stored and processed by
+        the AI/YOLO pipeline.
+
+      security:
+        - DevAuth: []
+
+      requestBody:
+
+        required: true
+
+        content:
+
+          multipart/form-data:
+
+            schema:
+
+              type: object
+
+              required:
+
+                - image
+                - title
+                - description
+                - category
+                - priority
+                - latitude
+                - longitude
+
+              properties:
+
+                image:
+
+                  type: string
+
+                  format: binary
+
+                  description: Complaint image for YOLO analysis
+
+
+                title:
+
+                  type: string
+
+                  description: Complaint title
+
+                  example: Large pothole on main road
+
+
+                description:
+
+                  type: string
+
+                  description: Complaint description
+
+                  example: Large pothole causing difficulty for vehicles and creating a safety hazard
+
+
+                category:
+
+                  type: string
+
+                  description: Complaint category
+
+                  enum:
+
+                    - Pothole
+                    - Garbage
+                    - WaterLeak
+                    - Streetlight
+                    - RoadDamage
+                    - OpenManhole
+                    - FallenTree
+
+                  example: Pothole
+
+
+                priority:
+
+                  type: string
+
+                  description: Complaint priority
+
+                  enum:
+
+                    - Low
+                    - Medium
+                    - High
+
+                  example: Medium
+
+
+                latitude:
+
+                  type: number
+
+                  format: double
+
+                  description: Complaint latitude
+
+                  example: 16.705
+
+
+                longitude:
+
+                  type: number
+
+                  format: double
+
+                  description: Complaint longitude
+
+                  example: 74.2433
+
+
+      responses:
+
+        '201':
+
+          description: Complaint Created Successfully
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: object
+
+                properties:
+
+                  success:
+                    type: boolean
+                    example: true
+
+                  message:
+                    type: string
+                    example: Complaint created successfully
+
+                  data:
+                    $ref: '#/components/schemas/Complaint'
+
+
+        '400':
+
+          description: Invalid complaint data
+
+
+        '401':
+
+          description: Authentication required
+
+
+        '404':
+
+          description: User not found
+
+
+        '500':
+
+          description: Internal Server Error
+
+
+
+  # ==========================================================
+  # SINGLE COMPLAINT
+  # ==========================================================
+
+  /complaints/{id}:
+
+    get:
+
+      tags:
+        - Complaints
+
+      summary: Get Complaint
+
+      description: Get a single complaint by its MongoDB ID.
+
+      security:
+        - DevAuth: []
+
+      parameters:
+
+        - in: path
+
+          name: id
+
+          required: true
+
+          description: MongoDB complaint ID
+
+          schema:
+
+            type: string
+
+          example: 66b123456789abcdef123456
+
+
+      responses:
+
+        '200':
+
+          description: Complaint retrieved successfully
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: object
+
+                properties:
+
+                  success:
+                    type: boolean
+                    example: true
+
+                  data:
+                    $ref: '#/components/schemas/Complaint'
+
+
+        '401':
+
+          description: Authentication required
+
+
+        '404':
+
+          description: Complaint not found
+
+
+        '500':
+
+          description: Internal Server Error
+
+
+  # ==========================================================
+  # UPDATE COMPLAINT STATUS
+  # ==========================================================
+
+  /complaints/{id}/status:
+
+    patch:
+
+      tags:
+        - Complaints
+
+      summary: Update complaint status
+
+      security:
+        - DevAuth: []
+
+      parameters:
+
+        - in: path
+
+          name: id
+
+          required: true
+
+          schema:
+            type: string
+
+          example: 66b123456789abcdef123456
+
+
+      requestBody:
+
+        required: true
+
+        content:
+
+          application/json:
+
+            schema:
+
+              type: object
+
+              properties:
+
+                status:
+
+                  type: string
+
+                  example: In Progress
+
+                remarks:
+
+                  type: string
+
+                  example: Worker has started repair work.
+
+
+      responses:
+
+        '200':
+
+          description: Status updated successfully
+
+
+        '401':
+
+          description: Authentication required
+
+
+        '404':
+
+          description: Complaint not found
+
+
+        '500':
+
+          description: Internal Server Error
+
+
+
+  # ==========================================================
+  # ASSIGN WORKER
+  # ==========================================================
+
+  /complaints/{id}/assign:
+
+    post:
+
+      tags:
+        - Complaints
+
+      summary: Assign worker to complaint
+
+      security:
+        - DevAuth: []
+
+      parameters:
+
+        - in: path
+
+          name: id
+
+          required: true
+
+          schema:
+            type: string
+
+
+      requestBody:
+
+        required: true
+
+        content:
+
+          application/json:
+
+            schema:
+
+              type: object
+
+              required:
+
+                - worker
+                - department
+
+              properties:
+
+                worker:
+
+                  type: string
+
+                  description: Worker MongoDB ID
+
+                  example: 66b987654321abcdef123456
+
+
+                department:
+
+                  type: string
+
+                  description: Department MongoDB ID
+
+                  example: 66b111111111abcdef123456
+
+
+                assignmentType:
+
+                  type: string
+
+                  enum:
+
+                    - Manual
+                    - AI
+
+                  example: Manual
+
+
+      responses:
+
+        '200':
+
+          description: Worker assigned successfully
+
+
+        '401':
+
+          description: Authentication required
+
+
+        '404':
+
+          description: Complaint or worker not found
+
+
+        '500':
+
+          description: Internal Server Error
+
+
+
+  # ==========================================================
+  # DELETE COMPLAINT
+  # ==========================================================
+
+  /complaints/{id}:
+
+    delete:
+
+      tags:
+        - Complaints
+
+      summary: Delete complaint
+
+      security:
+        - DevAuth: []
+
+      parameters:
+
+        - in: path
+
+          name: id
+
+          required: true
+
+          schema:
+            type: string
+
+
+      responses:
+
+        '200':
+
+          description: Complaint deleted successfully
+
+
+        '401':
+
+          description: Authentication required
+
+
+        '404':
+
+          description: Complaint not found
+
+
+        '500':
+
+          description: Internal Server Error
+
+
+
+  # ==========================================================
+  # ADMIN DASHBOARD
+  # ==========================================================
+
+  /dashboard/admin:
+
+    get:
+
+      tags:
+        - Dashboard
+
+      summary: Admin Dashboard
+
+      description: Retrieve admin dashboard statistics.
+
+      security:
+        - DevAuth: []
+
+      responses:
+
+        '200':
+
+          description: Dashboard Data
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: object
+
+                properties:
+
+                  success:
+                    type: boolean
+                    example: true
+
+                  data:
+                    type: object
+
+
+        '401':
+
+          description: Authentication required
+
+
+        '403':
+
+          description: Admin access required
+
+
+        '500':
+
+          description: Internal Server Error
+
+
+
+  # ==========================================================
+  # COMPLAINT REPORT
+  # ==========================================================
+
+  /reports/complaints:
+
+    get:
+
+      tags:
+        - Reports
+
+      summary: Download Complaint Report
+
+      description: Download complaints as a CSV report.
+
+      security:
+        - DevAuth: []
+
+      responses:
+
+        '200':
+
+          description: CSV File
+
+          content:
+
+            text/csv:
+
+              schema:
+
+                type: string
+
+                format: binary
+
+
+        '401':
+
+          description: Authentication required
+
+
+        '500':
+
+          description: Internal Server Error
+
+
+
+  # ==========================================================
+  # NOTIFICATIONS
+  # ==========================================================
+
+  /notifications:
+
+    get:
+
+      tags:
+        - Notifications
+
+      summary: Get all notifications
+
+      security:
+        - DevAuth: []
+
+      responses:
+
+        '200':
+
+          description: Notifications retrieved successfully
+
+          content:
+
+            application/json:
+
+              schema:
+
+                type: object
+
+                properties:
+
+                  success:
+                    type: boolean
+                    example: true
+
+                  count:
+                    type: integer
+                    example: 3
+
+                  data:
+
+                    type: array
+
+                    items:
+
+                      $ref: '#/components/schemas/Notification'
+
+
+        '401':
+
+          description: Authentication required
+
+
+    delete:
+
+      tags:
+        - Notifications
+
+      summary: Delete all notifications
+
+      security:
+        - DevAuth: []
+
+      responses:
+
+        '200':
+
+          description: All notifications deleted successfully
+
+
+        '401':
+
+          description: Authentication required
+
+
+
+  # ==========================================================
+  # UNREAD NOTIFICATIONS
+  # ==========================================================
+
+  /notifications/unread:
+
+    get:
+
+      tags:
+        - Notifications
+
+      summary: Get unread notifications
+
+      security:
+        - DevAuth: []
+
+      responses:
+
+        '200':
+
+          description: Unread notifications retrieved successfully
+
+
+        '401':
+
+          description: Authentication required
+
+
+
+  # ==========================================================
+  # MARK NOTIFICATION AS READ
+  # ==========================================================
+
+  /notifications/{id}/read:
+
+    patch:
+
+      tags:
+        - Notifications
+
+      summary: Mark notification as read
+
+      security:
+        - DevAuth: []
+
+      parameters:
+
+        - in: path
+
+          name: id
+
+          required: true
+
+          schema:
+
+            type: string
+
+
+      responses:
+
+        '200':
+
+          description: Notification marked as read
+
+
+        '401':
+
+          description: Authentication required
+
+
+        '404':
+
+          description: Notification not found
+
+
+
+  # ==========================================================
+  # MARK ALL NOTIFICATIONS AS READ
+  # ==========================================================
+
+  /notifications/read-all:
+
+    patch:
+
+      tags:
+        - Notifications
+
+      summary: Mark all notifications as read
+
+      security:
+        - DevAuth: []
+
+      responses:
+
+        '200':
+
+          description: All notifications marked as read
+
+
+        '401':
+
+          description: Authentication required
+
+
+
+  # ==========================================================
+  # DELETE SINGLE NOTIFICATION
+  # ==========================================================
+
+  /notifications/{id}:
+
+    delete:
+
+      tags:
+        - Notifications
+
+      summary: Delete notification
+
+      security:
+        - DevAuth: []
+
+      parameters:
+
+        - in: path
+
+          name: id
+
+          required: true
+
+          schema:
+
+            type: string
+
+
+      responses:
+
+        '200':
+
+          description: Notification deleted successfully
+
+
+        '401':
+
+          description: Authentication required
+
+
+        '404':
+
+          description: Notification not found

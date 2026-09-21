@@ -1,0 +1,69 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Python / Virtual Environments
+venv/
+**/venv/
+env/
+**/env/
+ENV/
+*.venv
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Datasets
+datasets/
+**/datasets/
+
+# AI models & run outputs
+runs/
+**/runs/
+uploads/*
+!uploads/.gitkeep
+outputs/*
+!outputs/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# Build outputs
+dist/
+**/dist/
+build/
+**/build/
+.svelte-kit/
+.next/
+out/
+
+# Local env files
+.env
+**/.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Executables & Tunnels
+*.exe
+cloudflared*
+*.bat
+
+# Server logs and runtime reports
+**/logs/*.log
+**/reports/*.csv
