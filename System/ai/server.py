@@ -20,19 +20,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(
 logger = logging.getLogger("CivicAI")
 
 BASE_DIR = Path(__file__).resolve().parent
-
-# Flexible model path resolution
-custom_path = os.getenv("MODEL_PATH")
-if custom_path and (BASE_DIR / custom_path).exists():
-    MODEL_PATH = BASE_DIR / custom_path
-elif custom_path and Path(custom_path).exists():
-    MODEL_PATH = Path(custom_path)
-elif (BASE_DIR / "best.pt").exists():
-    MODEL_PATH = BASE_DIR / "best.pt"
-elif (BASE_DIR / "weights" / "best.pt").exists():
+MODEL_PATH = BASE_DIR / "best.pt"
+if not MODEL_PATH.exists():
     MODEL_PATH = BASE_DIR / "weights" / "best.pt"
-else:
-    MODEL_PATH = BASE_DIR / "best.pt"
 
 YOLO_CONFIDENCE = float(os.getenv("YOLO_CONFIDENCE", "0.25"))
 YOLO_IOU = float(os.getenv("YOLO_IOU", "0.45"))
