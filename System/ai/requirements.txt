@@ -4,6 +4,7 @@ torchvision
 fastapi
 uvicorn[standard]
 ultralytics
+onnxruntime
 opencv-python-headless
 pillow
 numpy

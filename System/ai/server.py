@@ -20,7 +20,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(
 logger = logging.getLogger("CivicAI")
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_PATH = BASE_DIR / "best.pt"
+MODEL_PATH = BASE_DIR / "best.onnx"
+if not MODEL_PATH.exists():
+    MODEL_PATH = BASE_DIR / "best.pt"
 if not MODEL_PATH.exists():
     MODEL_PATH = BASE_DIR / "weights" / "best.pt"
 
@@ -76,7 +78,25 @@ class YOLOService:
                 raise FileNotFoundError(f"Model file missing at {MODEL_PATH}")
 
         start_time = time.perf_counter()
-        results = self.model.predict(source=image, conf=YOLO_CONFIDENCE, iou=YOLO_IOU, verbose=False)
+
+        # Safeguard memory on constrained RAM instances
+        orig_width, orig_height = image.size
+        input_image = image
+        scale_x = 1.0
+        scale_y = 1.0
+        if max(orig_width, orig_height) > 1024:
+            input_image = image.copy()
+            input_image.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
+            scale_x = orig_width / input_image.size[0]
+            scale_y = orig_height / input_image.size[1]
+
+        results = self.model.predict(
+            source=input_image,
+            conf=YOLO_CONFIDENCE,
+            iou=YOLO_IOU,
+            imgsz=640,
+            verbose=False
+        )
         result = results[0]
         names = result.names
         detections = []
@@ -92,23 +112,24 @@ class YOLOService:
                     "class_name": class_name,
                     "class_id": class_id,
                     "confidence": round(confidence, 4),
-                    "x1": round(x1, 2),
-                    "y1": round(y1, 2),
-                    "x2": round(x2, 2),
-                    "y2": round(y2, 2),
+                    "x1": round(x1 * scale_x, 2),
+                    "y1": round(y1 * scale_y, 2),
+                    "x2": round(x2 * scale_x, 2),
+                    "y2": round(y2 * scale_y, 2),
                 })
 
         primary_detection = max(detections, key=lambda x: x["confidence"]) if detections else None
         processing_time = (time.perf_counter() - start_time) * 1000
-        width, height = image.size
+        import gc
+        gc.collect()
 
         return {
             "success": True,
             "model": MODEL_PATH.name,
             "detections": detections,
             "primary_detection": primary_detection,
-            "image_width": width,
-            "image_height": height,
+            "image_width": orig_width,
+            "image_height": orig_height,
             "processing_time_ms": round(processing_time, 2),
         }
 
