@@ -1,0 +1,16 @@
+.vercel/
+.env
+.env.*
+!.env.example
+
+venv/
+__pycache__/
+*.pyc
+
+datasets/
+logs/
+outputs/
+uploads/
+
+# Local training/model files
+weights/
