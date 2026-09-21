@@ -107,41 +107,26 @@ class NotificationService {
            REAL-TIME SOCKET NOTIFICATION
         ======================================================== */
 
-        SocketHandler.emitNotification({
-
-            id:
-                notification._id,
-
-            recipient,
-
-            recipientClerkId,
-
-            complaint,
-
-            timeline,
-
-            title,
-
-            message,
-
-            type,
-
-            priority,
-
-            actionUrl,
-
-            icon,
-
-            metadata,
-
-            createdAt:
-                notification.createdAt,
-
-            isRead:
-                notification.isRead
-
-        });
-
+        try {
+            SocketHandler.emitNotification({
+                id: notification._id,
+                recipient,
+                recipientClerkId,
+                complaint,
+                timeline,
+                title,
+                message,
+                type,
+                priority,
+                actionUrl,
+                icon,
+                metadata,
+                createdAt: notification.createdAt,
+                isRead: notification.isRead
+            });
+        } catch (socketErr) {
+            console.warn("⚠️ Real-time socket notification broadcast skipped:", socketErr.message);
+        }
 
         return notification;
 

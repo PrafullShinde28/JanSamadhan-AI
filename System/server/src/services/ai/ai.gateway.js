@@ -39,15 +39,35 @@ class AIGateway {
         const isHf = process.env.AI_SERVER_URL && process.env.AI_SERVER_URL.includes("hf.space");
 
         if (isHf) {
-            console.log("🤖 Sending image to Hugging Face ZeroGPU AI...");
-            const client = await getGradioClient();
+            console.log("🤖 Sending image to Hugging Face AI Space...");
             const tempFile = path.join(os.tmpdir(), `yolo_${Date.now()}_${filename}`);
             try {
                 fs.writeFileSync(tempFile, imageBuffer);
                 const fileObj = handle_file(tempFile);
-                const result = await client.predict("/detect", { image: fileObj });
-                console.log("✅ Hugging Face AI response received");
+                const client = await getGradioClient();
+
+                // Call Gradio with positional array input [fileObj] and 20s timeout
+                const predictPromise = client.predict("/detect", [fileObj]);
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("AI inference timed out after 20s")), 20000)
+                );
+
+                const result = await Promise.race([predictPromise, timeoutPromise]);
+                console.log("✅ Hugging Face AI response received:", result?.data?.[0]?.primary_detection?.class_name || "No objects detected");
                 return result.data[0];
+            } catch (hfError) {
+                console.warn("⚠️ Hugging Face AI inference warning:", hfError.message);
+                // Return safe fallback response so complaint routing and worker dispatch proceed seamlessly
+                return {
+                    success: false,
+                    detections: [],
+                    primary_detection: null,
+                    image_width: 640,
+                    image_height: 640,
+                    processing_time_ms: 0,
+                    fallback: true,
+                    error: hfError.message
+                };
             } finally {
                 if (fs.existsSync(tempFile)) {
                     try { fs.unlinkSync(tempFile); } catch (_) {}
@@ -125,14 +145,28 @@ class AIGateway {
         const isHf = process.env.AI_SERVER_URL && process.env.AI_SERVER_URL.includes("hf.space");
 
         if (isHf) {
-            console.log("🤖 Running resolution verification via Hugging Face ZeroGPU AI...");
-            const client = await getGradioClient();
-            const result = await client.predict("/verify", {
-                before_url: beforeImage,
-                after_url: afterImage
-            });
-            console.log("✅ Hugging Face AI verification response received");
-            return result.data[0];
+            console.log("🤖 Running resolution verification via Hugging Face AI Space...");
+            try {
+                const client = await getGradioClient();
+                const predictPromise = client.predict("/verify", [beforeImage, afterImage]);
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("AI verification timed out after 25s")), 25000)
+                );
+                const result = await Promise.race([predictPromise, timeoutPromise]);
+                console.log("✅ Hugging Face AI verification response received");
+                return result.data[0];
+            } catch (err) {
+                console.warn("⚠️ Hugging Face AI verification warning:", err.message);
+                return {
+                    success: true,
+                    verified: false,
+                    isResolved: false,
+                    verificationScore: 0,
+                    recommendation: "MANUAL_REVIEW",
+                    reason: `AI verification fallback: ${err.message}`,
+                    fallback: true
+                };
+            }
         }
 
         const response =
