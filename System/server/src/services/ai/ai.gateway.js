@@ -97,38 +97,35 @@ class AIGateway {
         );
 
 
-        const response =
-            await api.post(
-
+        try {
+            const response = await api.post(
                 "/detect",
-
                 form,
-
                 {
                     headers: {
                         ...form.getHeaders()
                     },
-
-                    maxContentLength:
-                        Infinity,
-
-                    maxBodyLength:
-                        Infinity,
-
-                    timeout:
-                        120000
+                    maxContentLength: Infinity,
+                    maxBodyLength: Infinity,
+                    timeout: 45000
                 }
-
             );
 
-
-        console.log(
-            "✅ AI server response:",
-            response.status
-        );
-
-
-        return response.data;
+            console.log("✅ AI server response:", response.status);
+            return response.data;
+        } catch (apiError) {
+            console.warn("⚠️ AI server detection warning:", apiError.message);
+            return {
+                success: false,
+                detections: [],
+                primary_detection: null,
+                image_width: 640,
+                image_height: 640,
+                processing_time_ms: 0,
+                fallback: true,
+                error: apiError.message
+            };
+        }
 
     }
 
@@ -169,19 +166,29 @@ class AIGateway {
             }
         }
 
-        const response =
-            await api.post(
-
+        try {
+            const response = await api.post(
                 "/verify",
-
                 {
                     beforeImage,
                     afterImage
-                }
-
+                },
+                { timeout: 45000 }
             );
 
-        return response.data;
+            return response.data;
+        } catch (err) {
+            console.warn("⚠️ AI server verification warning:", err.message);
+            return {
+                success: true,
+                verified: false,
+                isResolved: false,
+                verificationScore: 0,
+                recommendation: "MANUAL_REVIEW",
+                reason: `AI verification fallback: ${err.message}`,
+                fallback: true
+            };
+        }
 
     }
 
