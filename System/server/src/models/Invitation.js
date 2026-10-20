@@ -12,7 +12,6 @@ const invitationSchema = new Schema(
         email: {
             type: String,
             required: true,
-            unique: true, // There should be only one active/inactive invitation per email to prevent duplicates
             lowercase: true,
             trim: true,
         },

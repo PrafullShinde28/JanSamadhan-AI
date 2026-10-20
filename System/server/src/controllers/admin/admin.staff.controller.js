@@ -3,6 +3,7 @@ const User = require("../../models/User");
 const Invitation = require("../../models/Invitation");
 const Department = require("../../models/Department");
 const AuditService = require("../../services/audit/audit.service");
+const EmailService = require("../../services/email/email.service");
 
 const hashToken = (token) => {
     return crypto.createHash("sha256").update(token).digest("hex");
@@ -86,11 +87,8 @@ class AdminStaffController {
                 });
             }
 
-            // Revoke any previous pending invitations for this email to avoid duplicates
-            await Invitation.updateMany(
-                { email: cleanEmail, status: "Pending" },
-                { $set: { status: "Revoked" } }
-            );
+            // Remove any previous invitations for this email to avoid duplicate key conflicts
+            await Invitation.deleteMany({ email: cleanEmail });
 
             // Generate cryptographically secure token
             const token = crypto.randomBytes(32).toString("hex");
@@ -122,11 +120,25 @@ class AdminStaffController {
                 description: `Admin invited Worker ${fullName} (Email: ${cleanEmail}, EmployeeID: ${employeeId})`,
             });
 
+            // Dispatch onboarding invitation email directly to the worker's inbox
+            const emailResult = await EmailService.sendWorkerInvitation({
+                to: cleanEmail,
+                fullName,
+                departmentName: dept.name,
+                employeeId: employeeId.trim(),
+                token,
+                clientUrl: process.env.CLIENT_URL || req.headers.origin || "http://localhost:5173"
+            });
+
             return res.status(201).json({
                 success: true,
-                message: "Worker invitation created successfully.",
+                message: emailResult.sent
+                    ? `Worker invitation created and email sent directly to ${cleanEmail}.`
+                    : `Worker invitation generated. Link copied to clipboard.`,
                 data: invitation,
-                token // Return raw token to let Admin copy the claim URL
+                token,
+                emailSent: emailResult.sent,
+                inviteLink: emailResult.inviteLink
             });
         } catch (error) {
             next(error);
@@ -157,11 +169,8 @@ class AdminStaffController {
                 });
             }
 
-            // Revoke any previous pending invitations for this email
-            await Invitation.updateMany(
-                { email: cleanEmail, status: "Pending" },
-                { $set: { status: "Revoked" } }
-            );
+            // Remove any previous invitations for this email to avoid duplicate key conflicts
+            await Invitation.deleteMany({ email: cleanEmail });
 
             const token = crypto.randomBytes(32).toString("hex");
             const tokenHash = hashToken(token);
@@ -187,11 +196,23 @@ class AdminStaffController {
                 description: `Admin invited Admin ${fullName} (Email: ${cleanEmail})`,
             });
 
+            // Dispatch admin invitation email directly to the admin's inbox
+            const emailResult = await EmailService.sendAdminInvitation({
+                to: cleanEmail,
+                fullName,
+                token,
+                clientUrl: process.env.CLIENT_URL || req.headers.origin || "http://localhost:5173"
+            });
+
             return res.status(201).json({
                 success: true,
-                message: "Admin invitation created successfully.",
+                message: emailResult.sent
+                    ? `Admin invitation created and email sent directly to ${cleanEmail}.`
+                    : `Admin invitation generated. Link copied to clipboard.`,
                 data: invitation,
-                token
+                token,
+                emailSent: emailResult.sent,
+                inviteLink: emailResult.inviteLink
             });
         } catch (error) {
             next(error);
