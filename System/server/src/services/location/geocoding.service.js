@@ -75,7 +75,7 @@ class GeocodingService {
                         },
 
                         timeout:
-                            10000
+                            5000
 
                     }
                 );
@@ -104,7 +104,7 @@ class GeocodingService {
             return {
 
                 formattedAddress:
-                    data.display_name || "",
+                    data.display_name || `Location (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`,
 
                 latitude,
 
@@ -144,25 +144,34 @@ class GeocodingService {
 
                 country:
                     address.country ||
-                    "",
+                    "India",
 
                 countryCode:
                     address.country_code ||
-                    ""
+                    "in"
 
             };
 
         } catch (error) {
 
-            console.error(
-                "❌ Reverse Geocoding Error:",
+            console.warn(
+                "⚠️ Reverse Geocoding fallback triggered:",
                 error.message
             );
 
-
-            throw new Error(
-                "Unable to determine address from GPS location"
-            );
+            return {
+                formattedAddress: `Coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+                latitude,
+                longitude,
+                address: "",
+                landmark: "",
+                city: "",
+                district: "",
+                state: "",
+                pincode: "",
+                country: "India",
+                countryCode: "in"
+            };
 
         }
 

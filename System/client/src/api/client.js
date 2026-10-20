@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getApiBaseUrl } from '../utils/network';
 
 const client = axios.create({
-  timeout: 20000,
+  timeout: 60000,
 });
 
 // Dynamic request interceptor ensuring every request uses the correct host (localhost or LAN IP)

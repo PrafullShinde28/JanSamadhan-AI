@@ -42,7 +42,7 @@ export default function SubmitComplaint() {
   const [captureSessionId, setCaptureSessionId] = useState('');
 
   // Handle native camera capture fallback (works across all browsers and HTTP LAN)
-  const handleNativeCapture = (e) => {
+  const handleNativeCapture = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -54,6 +54,15 @@ export default function SubmitComplaint() {
       stream.getTracks().forEach((track) => track.stop());
       setStream(null);
     }
+
+    try {
+      const sessionRes = await complaintApi.startCaptureSession();
+      if (sessionRes.data?.success) {
+        setCaptureSessionId(sessionRes.data.data.captureSessionId);
+      }
+    } catch (err) {
+      console.error('Failed to obtain capture token for native photo:', err);
+    }
   };
 
   // Start Camera Stream
@@ -64,15 +73,13 @@ export default function SubmitComplaint() {
 
     // 1. Initialize Capture Session on Backend
     try {
-      if (!captureSessionId) {
-        const sessionRes = await complaintApi.startCaptureSession();
-        if (sessionRes.data.success) {
-          setCaptureSessionId(sessionRes.data.data.captureSessionId);
-        }
+      const sessionRes = await complaintApi.startCaptureSession();
+      if (sessionRes.data?.success) {
+        setCaptureSessionId(sessionRes.data.data.captureSessionId);
       }
     } catch (err) {
       console.error('Failed to establish capture session:', err);
-      setCameraError('Failed to establish secure capture token. Reloading page...');
+      setCameraError('Failed to establish secure capture token. Please reload.');
       setLoadingCamera(false);
       return;
     }
@@ -166,6 +173,7 @@ export default function SubmitComplaint() {
   const handleRetake = () => {
     setImage(null);
     setPreview('');
+    setCaptureSessionId('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -235,6 +243,12 @@ export default function SubmitComplaint() {
     } catch (error) {
       console.error('Complaint create error:', error);
       toast.error(error.response?.data?.message || error.message || 'Submission failed.');
+      // Auto-refresh capture session token so user can retry immediately without session conflict
+      complaintApi.startCaptureSession().then((res) => {
+        if (res.data?.success) {
+          setCaptureSessionId(res.data.data.captureSessionId);
+        }
+      }).catch((e) => console.warn('Could not auto-refresh session:', e));
     } finally {
       setSubmitting(false);
     }

@@ -11,7 +11,12 @@ from ultralytics import YOLO
 from fastapi import FastAPI, APIRouter, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, HttpUrl
-import gradio as gr
+try:
+    import gradio as gr
+    HAS_GRADIO = True
+except ImportError:
+    gr = None
+    HAS_GRADIO = False
 
 # ============================================================
 # LOGGING & CONFIG
@@ -288,22 +293,23 @@ def api_verify(before_url: str, after_url: str):
         return {"success": False, "error": "Both before and after image URLs are required"}
     return do_verify(str(before_url).strip(), str(after_url).strip())
 
-with gr.Blocks(title="JanSamadhan AI Service") as demo:
-    gr.Markdown("# 🏛️ JanSamadhan AI — Computer Vision Service")
-    gr.Markdown("🟢 **Live High-Performance AI Microservice on Hugging Face Spaces (CPU Basic 16GB).**")
+if HAS_GRADIO:
+    with gr.Blocks(title="JanSamadhan AI Service") as demo:
+        gr.Markdown("# 🏛️ JanSamadhan AI — Computer Vision Service")
+        gr.Markdown("🟢 **Live High-Performance AI Microservice on Hugging Face Spaces (CPU Basic 16GB).**")
 
-    with gr.Tab("Issue Detection"):
-        img_in = gr.Image(type="pil", label="Upload Issue Photo")
-        out_json = gr.JSON(label="Detection Results (JSON)")
-        btn_detect = gr.Button("Detect Civic Issues", variant="primary")
-        btn_detect.click(fn=api_detect, inputs=img_in, outputs=out_json, api_name="detect")
+        with gr.Tab("Issue Detection"):
+            img_in = gr.Image(type="pil", label="Upload Issue Photo")
+            out_json = gr.JSON(label="Detection Results (JSON)")
+            btn_detect = gr.Button("Detect Civic Issues", variant="primary")
+            btn_detect.click(fn=api_detect, inputs=img_in, outputs=out_json, api_name="detect")
 
-    with gr.Tab("Resolution Verification"):
-        before_in = gr.Textbox(label="Before Image URL", placeholder="https://...")
-        after_in = gr.Textbox(label="After Image URL", placeholder="https://...")
-        out_verify = gr.JSON(label="Verification Result (JSON)")
-        btn_verify = gr.Button("Verify Resolution", variant="primary")
-        btn_verify.click(fn=api_verify, inputs=[before_in, after_in], outputs=out_verify, api_name="verify")
+        with gr.Tab("Resolution Verification"):
+            before_in = gr.Textbox(label="Before Image URL", placeholder="https://...")
+            after_in = gr.Textbox(label="After Image URL", placeholder="https://...")
+            out_verify = gr.JSON(label="Verification Result (JSON)")
+            btn_verify = gr.Button("Verify Resolution", variant="primary")
+            btn_verify.click(fn=api_verify, inputs=[before_in, after_in], outputs=out_verify, api_name="verify")
 
 app = FastAPI(
     title="JanSamadhan AI Service",
@@ -327,7 +333,7 @@ def root():
             "detect": "/api/v1/detect (POST)",
             "verify": "/api/v1/verify (POST)",
             "health": "/health (GET)",
-            "ui": "/gradio"
+            "ui": "/gradio" if HAS_GRADIO else "disabled"
         }
     }
 
@@ -337,8 +343,9 @@ def health_check():
 
 app.include_router(api_router)
 
-# Mount Gradio interactive demo at /gradio
-app = gr.mount_gradio_app(app, demo, path="/gradio")
+# Mount Gradio interactive demo at /gradio if available
+if HAS_GRADIO and 'demo' in locals():
+    app = gr.mount_gradio_app(app, demo, path="/gradio")
 
 if __name__ == "__main__":
     import uvicorn

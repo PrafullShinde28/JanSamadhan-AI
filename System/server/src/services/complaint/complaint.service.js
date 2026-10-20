@@ -110,10 +110,6 @@ class ComplaintService {
             throw new Error("Capture session owner mismatch.");
         }
 
-        // Mark the single-use session as used immediately
-        session.used = true;
-        await session.save();
-
 
         /* ========================================================
            GPS REQUIRED
@@ -444,50 +440,65 @@ class ComplaintService {
 
 
         /* ========================================================
-           ADD TO AI QUEUE
+           ADD TO AI QUEUE (RESILIENT WITH TIMEOUT & DIRECT FALLBACK)
         ======================================================== */
 
-        await aiQueue.add(
+        try {
+            await Promise.race([
+                aiQueue.add(
+                    "PROCESS_COMPLAINT",
+                    {
+                        complaintId:
+                            complaint._id.toString()
+                    },
+                    {
+                        attempts:
+                            3,
+                        backoff: {
+                            type:
+                                "exponential",
+                            delay:
+                                5000
+                        },
+                        removeOnComplete:
+                            true,
+                        removeOnFail:
+                            false
+                    }
+                ),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("AI queue connection timed out")), 4000)
+                )
+            ]);
 
-            "PROCESS_COMPLAINT",
+            console.log(
+                "🤖 Complaint added to AI queue:",
+                complaint._id.toString()
+            );
+        } catch (queueErr) {
+            console.warn(
+                "⚠️ AI Queue enqueue failed or timed out, triggering direct background fallback:",
+                queueErr.message
+            );
 
-            {
-
-                complaintId:
-                    complaint._id.toString()
-
-            },
-
-            {
-
-                attempts:
-                    3,
-
-                backoff: {
-
-                    type:
-                        "exponential",
-
-                    delay:
-                        5000
-
-                },
-
-                removeOnComplete:
-                    true,
-
-                removeOnFail:
-                    false
-
-            }
-
-        );
+            // Execute AI processing in background without hanging HTTP request
+            setImmediate(async () => {
+                try {
+                    const AIService = require("../ai/ai.service");
+                    await AIService.processComplaint(complaint._id.toString());
+                } catch (aiErr) {
+                    console.error("❌ Direct AI processing error:", aiErr.message);
+                }
+            });
+        }
 
 
-        console.log(
-            "🤖 Complaint added to AI queue:",
-            complaint._id.toString()
-        );
+        /* ========================================================
+           FINALIZE CAPTURE SESSION
+        ======================================================== */
+
+        session.used = true;
+        await session.save();
 
 
         /* ========================================================
