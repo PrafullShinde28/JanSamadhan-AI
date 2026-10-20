@@ -1,16 +1,39 @@
+# Vercel
 .vercel/
+
+# Environment variables and secrets
 .env
 .env.*
 !.env.example
 
+# Python virtual environment
 venv/
-__pycache__/
-*.pyc
+.venv/
 
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Datasets and generated files
 datasets/
 logs/
 outputs/
 uploads/
 
-# Local training/model files
+# Local training and model weights
 weights/
+*.pt
+*.pth
+*.onnx
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
