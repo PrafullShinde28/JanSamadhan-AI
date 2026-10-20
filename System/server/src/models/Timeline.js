@@ -16,6 +16,7 @@ const timelineSchema = new Schema(
                 "Complaint Created",
                 "AI Analysis Started",
                 "AI Analysis Completed",
+                "AI Validation Check",
                 "Duplicate Complaint Detected",
                 "Department Assigned",
                 "Worker Assigned",
