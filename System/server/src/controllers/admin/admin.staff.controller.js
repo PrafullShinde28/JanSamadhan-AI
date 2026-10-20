@@ -3,7 +3,6 @@ const User = require("../../models/User");
 const Invitation = require("../../models/Invitation");
 const Department = require("../../models/Department");
 const AuditService = require("../../services/audit/audit.service");
-const EmailService = require("../../services/email/email.service");
 
 const hashToken = (token) => {
     return crypto.createHash("sha256").update(token).digest("hex");
@@ -120,25 +119,11 @@ class AdminStaffController {
                 description: `Admin invited Worker ${fullName} (Email: ${cleanEmail}, EmployeeID: ${employeeId})`,
             });
 
-            // Dispatch onboarding invitation email directly to the worker's inbox
-            const emailResult = await EmailService.sendWorkerInvitation({
-                to: cleanEmail,
-                fullName,
-                departmentName: dept.name,
-                employeeId: employeeId.trim(),
-                token,
-                clientUrl: process.env.CLIENT_URL || req.headers.origin || "http://localhost:5173"
-            });
-
             return res.status(201).json({
                 success: true,
-                message: emailResult.sent
-                    ? `Worker invitation created and email sent directly to ${cleanEmail}.`
-                    : `Worker invitation generated. Link copied to clipboard.`,
+                message: "Worker invitation created successfully.",
                 data: invitation,
-                token,
-                emailSent: emailResult.sent,
-                inviteLink: emailResult.inviteLink
+                token // Return raw token to let Admin copy the claim URL
             });
         } catch (error) {
             next(error);
@@ -196,23 +181,11 @@ class AdminStaffController {
                 description: `Admin invited Admin ${fullName} (Email: ${cleanEmail})`,
             });
 
-            // Dispatch admin invitation email directly to the admin's inbox
-            const emailResult = await EmailService.sendAdminInvitation({
-                to: cleanEmail,
-                fullName,
-                token,
-                clientUrl: process.env.CLIENT_URL || req.headers.origin || "http://localhost:5173"
-            });
-
             return res.status(201).json({
                 success: true,
-                message: emailResult.sent
-                    ? `Admin invitation created and email sent directly to ${cleanEmail}.`
-                    : `Admin invitation generated. Link copied to clipboard.`,
+                message: "Admin invitation created successfully.",
                 data: invitation,
-                token,
-                emailSent: emailResult.sent,
-                inviteLink: emailResult.inviteLink
+                token
             });
         } catch (error) {
             next(error);
