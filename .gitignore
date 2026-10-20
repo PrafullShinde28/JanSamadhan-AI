@@ -35,6 +35,8 @@ logs/*
 # Build outputs
 dist/
 **/dist/
+dev-dist/
+**/dev-dist/
 build/
 **/build/
 .svelte-kit/
